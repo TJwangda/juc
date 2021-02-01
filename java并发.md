@@ -624,7 +624,128 @@ class Phone4{
 
 ## 集合类不安全
 
+> list
 
+~~~java
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+public class ListTest {
+    public static void main(String[] args) {
+
+//        List<String> list = new ArrayList<>();
+//        List<String> list = new Vector<>();//方案1、Vector是安全的,不报错
+//        List<String> list = Collections.synchronizedList(new ArrayList<>());//方案2、Collections工具类，把集合改成安全
+        List<String> list = new CopyOnWriteArrayList<>();//方案3、juc
+
+        //一个线程跑，线程安全
+//        for(int i = 1;i<=10;i++){
+//            list.add(UUID.randomUUID().toString().substring(0,5));
+//            System.out.println(list);
+//        }
+
+//        10个线程跑  报错java.util.ConcurrentModificationException，并发修改异常
+        //解决方案：方案1、ArrayList换成Vector，Vector是安全的
+        //方案2、Collections工具类，把集合改成安全
+        //方案3、juc
+        //CopyOnWrite 写入时复制， cow 计算机程序设计领域的一种优化策略
+        //多个线程调用的时候，list，读取是固定的，写入会覆盖
+
+        for(int i = 1;i<=10;i++){
+            new Thread(()->{
+                list.add(UUID.randomUUID().toString().substring(0,5));
+                System.out.println(list);
+            },String.valueOf(i)).start();
+
+        }
+    }
+}
+~~~
+
+> set
+
+~~~java
+
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+/**
+ * .ConcurrentModificationException
+ */
+public class SetTest {
+    public static void main(String[] args) {
+//        Set<String> set = new HashSet<>();
+//        Set<String> set = Collections.synchronizedSet(new HashSet<>());//方案一
+        Set<String> set = new CopyOnWriteArraySet<>();//方案二
+
+        for(int i = 1;i<=30;i++){
+            new Thread(()->{
+                set.add(UUID.randomUUID().toString().substring(0,5));
+                System.out.println(set);
+            },String.valueOf(i)).start();
+        }
+    }
+}
+~~~
+
+HashSet的本质：
+
+~~~java
+ public HashSet() {
+        map = new HashMap<>();
+    }
+//set的add方法本质：借用了map的key
+public boolean add(E e) {
+        return map.put(e, PRESENT)==null;
+    }
+    private static final Object PRESENT = new Object(); //固定值
+~~~
+
+> Map
+
+![image-20210201162206820](E:\dev\picture\image-20210201162206820.png)
+
+~~~java
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class MapTest {
+    public static void main(String[] args) {
+        //map平常怎么用，
+        // 默认等价于什么 new HashMap<>() ==》new HashMap<>(16,0.75)
+//        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = new ConcurrentHashMap<>();//方案一
+        // 加载因子，初始化容量  稍后查一下
+
+        for(int i = 1 ;i <= 30 ;i++){
+            new Thread(()->{
+                map.put(Thread.currentThread().getName(), UUID.randomUUID().toString().substring(0,5));
+                System.out.println(map);
+            },String.valueOf(i)).start();
+        }
+    }
+}
+~~~
+
+
+
+## Callable(简单)
+
+~~~java
+@FunctionalInterface
+public interface Callable<V>
+    
+返回结果并可能引发异常的任务。 实现者定义一个没有参数的单一方法，称为call 。 
+Callable接口类似于Runnable ，因为它们都是为其实例可能由另一个线程执行的类设计的。 然而，A Runnable不返回结果，也不能抛出被检查的异常。 
+该Executors类包含的实用方法，从其他普通形式转换为Callable类。
+1、可以有返回值 2、可以抛出异常 3、方法不同 run()/call()
+~~~
+
+~~~java
+代码
+~~~
 
 
 
