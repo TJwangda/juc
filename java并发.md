@@ -745,21 +745,126 @@ Callable接口类似于Runnable ，因为它们都是为其实例可能由另一
 
 ~~~java
 代码
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+
+public class CallableTest {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+//        new Thread(new Runnable()).start();//传统方法
+//                       ||
+//        new Thread(new FutureTask<V>()).start();//传统方法
+
+//        new Thread(new FutureTask<V>(Callable)).start();//调用callable
+//        new Thread().start();//callable怎么启动
+
+        MyThread myThread = new MyThread();
+        FutureTask futureTask = new FutureTask(myThread);
+        new Thread(futureTask,"A").start();
+        new Thread(futureTask,"B").start();//只会打印一次call，结果缓存，效率高
+
+        String o = (String) futureTask.get();//获取callable返回结果，get()可能会阻塞，放到最后或者异步通信处理
+        System.out.println("==="+o);
+    }
+}
+
+//class MyThread implements Runnable{
+class MyThread implements Callable<String> {
+
+//    @Override
+//    public void run() {
+//    }
+    @Override
+    public String call() throws Exception {
+        System.out.println("call方法===");
+        return "123";
+    }
+}
 ~~~
 
+![image-20210204163812200](E:\dev\picture\image-20210204163812200.png)
 
+![image-20210204163726618](E:\dev\picture\image-20210204163726618.png)
 
+![image-20210204164025421](E:\dev\picture\image-20210204164025421.png)
 
+细节：结果有缓存、结果可能需要等待会阻塞
 
+## 常用的辅助类
 
+### CountDownLatch
 
+![image-20210204165812959](E:\dev\picture\image-20210204165812959.png)
 
+~~~java
+import java.util.concurrent.CountDownLatch;
 
+/**
+ * 减法计数器
+ */
+public class CountDownLatchDemo {
+    public static void main(String[] args) throws InterruptedException {
+        //总数是6
+        CountDownLatch countDownLatch = new CountDownLatch(6);
 
+        for(int i = 1;i<=6;i++){
+            new Thread(()->{
+                System.out.println(Thread.currentThread().getName()+"走了");
+                countDownLatch.countDown();//减1
+            },String.valueOf(i)).start();
+        }
+        countDownLatch.await();//等待计数器归零再向下执行。没有这个等待，上边的不执行完就会执行下边的代码。
+        System.out.println("没有了");
+    }
+}
+~~~
 
+原理：==countDownLatch.countDown()==减1
 
+​           ==countDownLatch.await()==等待计数器归零再向下执行
 
+​			每次有线程调用countDown，数量减1，假设数量变成0，countDownLatch.await会被唤醒，继续执行。
 
+### CyclicBarrier
+
+![image-20210204171657025](E:\dev\picture\image-20210204171657025.png)
+
+~~~java
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+
+/**
+ * 加法计数器
+ */
+public class CyclicBarrierDemo {
+    public static void main(String[] args) {
+        //集齐七颗龙珠召唤神龙
+        CyclicBarrier cyclicBarrier = new CyclicBarrier(7,()->{
+            System.out.println("召唤神龙");
+        });
+
+        for(int i = 1;i<=7;i++){
+            final int temp = i;
+            //lambda操作不到i
+            new Thread(()->{
+//                System.out.println("==="+i);无法直接获取i，因为lambda是另一个类
+                System.out.println(Thread.currentThread().getName()+"收集==="+temp+"个龙珠");//可以通过final获取到
+                try {
+                    cyclicBarrier.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (BrokenBarrierException e) {
+                    e.printStackTrace();
+                }
+            },String.valueOf(i)).start();
+        }
+    }
+}
+~~~
+
+###  Semaphore
+
+![image-20210204175201310](E:\dev\picture\image-20210204175201310.png)
 
 
 
