@@ -866,5 +866,143 @@ public class CyclicBarrierDemo {
 
 ![image-20210204175201310](E:\dev\picture\image-20210204175201310.png)
 
+~~~java
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
+public class SemaphoreDemo {
+    public static void main(String[] args) {
+//       线程数量： 停车位、限流
+        Semaphore semaphore = new Semaphore(3);
+        for(int i = 1;i<=6;i++){
+            new Thread(()->{
+                //acquire 得到
+                try {
+                    semaphore.acquire();
+                    System.out.println(Thread.currentThread().getName()+"抢到车位");
+                    TimeUnit.SECONDS.sleep(2);
+                    System.out.println(Thread.currentThread().getName()+"离开车位");
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }finally {
+                    //release 释放
+                    semaphore.release();
+                }
+
+            },String.valueOf(i)).start();
+        }
+    }
+}
+~~~
+
+原理：==semaphore.acquire：获取==,假如已经满了，就等到释放为止
+
+​			==semaphore.release：释放==，会将当前信号量释放，唤醒等待线程。
+
+作用：多个共享资源互斥的使用！并发限流，控制最大线程数。
+
+## 读写锁
+
+![image-20210207101609175](E:\dev\picture\image-20210207101609175.png)
+
+~~~java
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+/**
+ * 独占锁（写锁） 一次只能被一个线程持有
+ * 共享锁（读锁） 多个线程可以同事占有
+ * readwriteLock
+ * 读-读 可以共存
+ * 读-写  不可以共存
+ * 写-写  不可以共存
+ */
+public class ReadWriteLockDemo {
+    public static void main(String[] args) {
+//        MyCache myCache = new MyCache();
+        MyCacheLock myCache = new MyCacheLock();
+        //写入
+        for(int i = 1;i<= 5;i++){
+            final int temp = i;
+            new Thread(()->{
+                myCache.put(temp+"",temp+"");
+            },String.valueOf(i)).start();
+        }
+//        获取
+        for(int i = 1;i<= 5;i++){
+            final int temp = i;
+            new Thread(()->{
+                myCache.get(temp+"");
+            },String.valueOf(i)).start();
+        }
+
+    }
+}
+
+/**
+ * 无锁，多天线程插入影响逻辑。
+ * 自定义缓存，set/get
+ *
+ */
+class MyCache{
+    private volatile Map<String,Object> map= new HashMap();
+    //存
+    public void put(String key,Object value){
+        System.out.println(Thread.currentThread().getName()+"写入"+key);
+        map.put(key,value);
+        System.out.println(Thread.currentThread().getName()+"写完ok"+key);
+    }
+    //取
+    public void get(String key){
+        System.out.println(Thread.currentThread().getName()+"读取"+key);
+        Object o = map.get(key);
+        System.out.println(Thread.currentThread().getName()+"读取ok"+key);
+//        return o;
+    }
+}
+
+/**
+ * 自定义缓存-有锁，set/get
+ *
+ */
+class MyCacheLock{
+    private volatile Map<String,Object> map= new HashMap();
+    //读写锁，更加细粒度控制
+    private ReadWriteLock readWriteLock =  new ReentrantReadWriteLock();
+//    private Lock lock = new ReentrantLock();
+    //存，写入时只希望一个时间只有一个线程写入
+    public void put(String key,Object value){
+//        lock.lock();
+        readWriteLock.writeLock().lock();//加写锁
+        try {
+            System.out.println(Thread.currentThread().getName()+"写入"+key);
+            map.put(key,value);
+            System.out.println(Thread.currentThread().getName()+"写完ok"+key);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            readWriteLock.writeLock().unlock();//解写锁
+        }
+    }
+    //取，读可以所有人读取
+    public void get(String key){
+        readWriteLock.readLock().lock();
+        try {
+            System.out.println(Thread.currentThread().getName()+"读取"+key);
+            Object o = map.get(key);
+            System.out.println(Thread.currentThread().getName()+"读取ok"+key);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            readWriteLock.readLock().unlock();
+        }
+//        return o;
+    }
+}
+~~~
 
