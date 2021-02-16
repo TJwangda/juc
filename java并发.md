@@ -1158,3 +1158,153 @@ public class SynchronousQueueDemo {
 }
 ~~~
 
+## 线程池（重点）
+
+> 池化技术 ：事先准备好资源，有人要用就来取，用完归还
+
+线程池：三大方法、七大参数、四种拒绝策略
+
+线程池的好处：==**线程服用、最大并发数可控、管理线程**==
+
+> 三大方法
+
+![image-20210209110555498](E:\dev\picture\image-20210209110555498.png)
+
+~~~java
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+ * Executors工具类，三大方法
+ */
+public class Demo01 {
+    public static void main(String[] args) {
+        //ExecutorService threadPool = Executors.newSingleThreadExecutor();//创建单个线程
+        //ExecutorService threadPool = Executors.newFixedThreadPool(5);//创建固定大小的线程池
+       ExecutorService threadPool = Executors.newCachedThreadPool();//创建一个可伸缩的线程池，遇强则强，遇弱则弱
+
+        try {
+            for(int i = 1;i <= 10;i++){
+    //            new Thread().start();弃用此种方式创建线程
+                //用线程池创建线程
+                threadPool.execute(()->{
+                    System.out.println(Thread.currentThread().getName()+"==ok");
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            threadPool.shutdown();
+        }
+    }
+}
+
+~~~
+
+> 七大参数
+
+源码分析
+
+```java
+public static ExecutorService newSingleThreadExecutor() {
+    return new FinalizableDelegatedExecutorService
+        (new ThreadPoolExecutor(1, 1,
+                                0L, TimeUnit.MILLISECONDS,
+                                new LinkedBlockingQueue<Runnable>()));
+}
+
+public static ExecutorService newFixedThreadPool(int nThreads) {
+    return new ThreadPoolExecutor(nThreads, nThreads,
+                                  0L, TimeUnit.MILLISECONDS,
+                                  new LinkedBlockingQueue<Runnable>());
+}
+
+public static ExecutorService newCachedThreadPool() {
+    return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+                                  60L, TimeUnit.SECONDS,
+                                  new SynchronousQueue<Runnable>());
+}
+
+//ThreadPoolExecutor本质：
+public ThreadPoolExecutor(int corePoolSize,//核心线程池大小
+                              int maximumPoolSize,//最大核心线程池大小
+                              long keepAliveTime,//核心线程池之外的最大线程池中线程，超时没人调用会释放
+                              TimeUnit unit,//超时单位
+                              BlockingQueue<Runnable> workQueue,//阻塞队列
+                              ThreadFactory threadFactory,//线程工厂，创建线程用，一般不用动
+                              RejectedExecutionHandler handler//拒绝策略
+                         ) {
+    if (corePoolSize < 0 ||
+        maximumPoolSize <= 0 ||
+        maximumPoolSize < corePoolSize ||
+        keepAliveTime < 0)
+        throw new IllegalArgumentException();
+    if (workQueue == null || threadFactory == null || handler == null)
+        throw new NullPointerException();
+    this.acc = System.getSecurityManager() == null ?
+        null :
+    AccessController.getContext();
+    this.corePoolSize = corePoolSize;
+    this.maximumPoolSize = maximumPoolSize;
+    this.workQueue = workQueue;
+    this.keepAliveTime = unit.toNanos(keepAliveTime);
+    this.threadFactory = threadFactory;
+    this.handler = handler;
+}
+```
+
+![image-20210209164538192](E:\dev\picture\image-20210209164538192.png)
+
+![image-20210209164956822](E:\dev\picture\image-20210209164956822.png)
+
+> 手动创建线程池
+
+~~~java
+/**
+ * Executors工具类，三大方法
+ */
+public class Demo02 {
+    public static void main(String[] args) {
+         ExecutorService threadPool = new ThreadPoolExecutor(2,
+                 5,
+                 3,
+                 TimeUnit.SECONDS,
+                 new LinkedBlockingQueue<>(3),//阻塞队列超过三个时，触发最大容量
+                 Executors.defaultThreadFactory(),
+//                 new ThreadPoolExecutor.AbortPolicy());//默认拒绝策略。  最大容量满了以后再进来的任务不处理并报异常
+//                 new ThreadPoolExecutor.CallerRunsPolicy());//哪来的去哪里。  最大容量满了以后再进来的任务退回去原线程处理
+//                 new ThreadPoolExecutor.DiscardPolicy());//最大容量满了以后再进来的任务会丢掉不处理，不抛出异常
+                 new ThreadPoolExecutor.DiscardOldestPolicy());//最大容量满了尝试和最早的竞争，如果最早线程任务处理结束了，可以执行，否则依然丢掉不报异常
+
+        try {
+            //最大承载：阻塞队列容量+max线程值
+//            for(int i = 1;i <= 8;i++){
+            for(int i = 1;i <= 9;i++){//抛出异常
+    //            new Thread().start();弃用此种方式创建线程
+                //用线程池创建线程
+                threadPool.execute(()->{
+                    System.out.println(Thread.currentThread().getName()+"==ok");
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            threadPool.shutdown();
+        }
+
+    }
+}
+~~~
+
+
+
+> 四种拒绝策略
+
+![image-20210216105902967](E:\dev\picture\image-20210216105902967.png)
+
+```java
+//new ThreadPoolExecutor.AbortPolicy());//默认拒绝策略。  最大容量满了以后再进来的任务不处理并报异常
+//new ThreadPoolExecutor.CallerRunsPolicy());//哪来的去哪里。  最大容量满了以后再进来的任务退回去原线程处理
+//new ThreadPoolExecutor.DiscardPolicy());//最大容量满了以后再进来的任务会丢掉不处理，不抛出异常
+//new ThreadPoolExecutor.DiscardOldestPolicy());//最大容量满了尝试和最早的竞争，如果最早线程任务处理结束了，可以执行，否则依然丢掉不报异常
+```
