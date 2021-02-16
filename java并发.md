@@ -1492,3 +1492,117 @@ public class Test {
 }
 ~~~
 
+
+
+## ForkJoin
+
+> 
+
+jdk1.7以后出现。并行执行任务提高效率，大数据量前提下
+
+![image-20210216153824971](E:\dev\picture\image-20210216153824971.png)
+
+> ForkJoin特点：工作窃取
+
+这个里边维护的都是双端队列，当B线程执行完自己的任务时，可以窃取A线程未完成的任务，从而提高效率。
+
+![image-20210216154040158](E:\dev\picture\image-20210216154040158.png).
+
+> ForkJoin操作
+
+![image-20210216170413347](E:\dev\picture\image-20210216170413347.png)
+
+![image-20210216170803111](E:\dev\picture\image-20210216170803111.png).
+
+~~~java
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+import java.util.stream.LongStream;
+
+public class Test {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+//        test1();//6387
+//        test2();//6001
+        test3();//176
+    }
+
+    public static void test1(){
+        long start = System.currentTimeMillis();
+        Long sum = 0L;
+        for(Long i = 1L; i <= 10_0000_0000; i++){
+            sum += i;
+        }
+        System.out.println(sum);
+        long end = System.currentTimeMillis();
+        System.out.println("sum:"+sum+"时间："+(end-start));
+    }
+
+    //forkjoin
+    public static void test2() throws ExecutionException, InterruptedException {
+        long start = System.currentTimeMillis();
+
+        ForkJoinPool forkJoinPool = new ForkJoinPool();
+        ForkJoinDemo task = new ForkJoinDemo(0l, 10_0000_0000l);
+        ForkJoinTask<Long> submit = forkJoinPool.submit(task);
+        Long sum = submit.get();
+
+        long end = System.currentTimeMillis();
+        System.out.println("sum:"+sum+"时间："+(end-start));
+    }
+
+    //stream并行流
+    public static void test3(){
+        long start = System.currentTimeMillis();
+        long sum = LongStream.rangeClosed(0l,10_0000_0000L).parallel().reduce(0,Long::sum);
+        long end = System.currentTimeMillis();
+        System.out.println("sum:"+sum+"时间："+(end-start));
+    }
+}
+
+import java.util.concurrent.RecursiveTask;
+
+/**
+ * 求和计算
+ * 如何使用forkjoin
+ * 1、forkjoinPool 通过它执行
+ * 2、计算任务 forkjoinpool.execute(ForkJoinTask task)
+ * 3、计算类继承ForkJoinTask
+ */
+public class ForkJoinDemo extends RecursiveTask<Long> {
+    private Long start;
+    private Long end;
+
+
+    private long temp=10000l;//临界值
+    public ForkJoinDemo(Long start,Long end){
+        this.start = start;
+        this.end = end;
+    }
+
+
+
+    //计算方法
+    @Override
+    protected Long compute() {
+        if((end-start)<temp){//差值大于临界值用forkjoin合并计算
+            Long sum = 0L;
+            for(Long i = start; i <= end; i++){
+                sum += i;
+            }
+//            System.out.println(sum);
+            return sum;
+        }else {//forkjoin
+            long middle = (start+end)/2;
+            ForkJoinDemo task1 = new ForkJoinDemo(start, middle);
+            task1.fork();//拆分任务，把任务压入线程队列
+            ForkJoinDemo task2 = new ForkJoinDemo(middle+1, end);
+            task2.fork();//拆分任务，把任务压入线程队列
+            //合并结果
+            return task1.join() + task2.join();
+        }
+    }
+}
+
+~~~
+
