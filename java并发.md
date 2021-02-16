@@ -1324,3 +1324,130 @@ public class Demo02 {
                  Executors.defaultThreadFactory(),
                  new ThreadPoolExecutor.AbortPolicy());//默认拒绝策略。  最大容量满了以后再进来的任务不处理并报异常             
 ```
+
+
+
+## 四大函数式接口（必须掌握）
+
+lambda表达式、链式编程、函数式接口、Stream流式计算
+
+> 函数式接口：只有一个方法的接口
+
+```java
+@FunctionalInterface
+public interface Runnable { 
+    public abstract void run();
+}
+//超级多@FunctionalInterface标签
+//简化编程模型，在新版本框架底层中大量应用
+//forEach(Consumer<? super T> action) 参数为消费类型的函数式接口
+```
+
+<img src="E:\dev\picture\image-20210216114542128.png" alt="image-20210216114542128" style="zoom: 80%;" />.
+
+代码测试：
+
+> Function函数式接口
+
+![image-20210216120006674](E:\dev\picture\image-20210216120006674.png).
+
+~~~java
+import java.util.function.Function;
+
+/**
+ * Function 函数型接口 有一个参数，一个输出
+ * 只要是函数式接口，就可以用lambda表达式简化
+ */
+public class Demo01 {
+    public static void main(String[] args) {
+//        Function<String,String> fun = new Function<String,String>(){
+//
+//            @Override
+//            public String apply(String o) {
+//                return o;
+//            }
+//        };
+        Function<String,String> fun = (str)->{ return str; };
+        System.out.println(fun.apply("asdf"));
+    }
+}
+~~~
+
+>  Predicate 断定型接口
+
+![image-20210216120317799](E:\dev\picture\image-20210216120317799.png)
+
+~~~java
+import java.util.function.Predicate;
+
+/**
+ * Predicate 有一个入参，返回boolean值
+ */
+public class Demo02 {
+    public static void main(String[] args) {
+        //判断方法
+//        Predicate<String> predicate = new Predicate<String>(){
+//
+//            @Override
+//            public boolean test(String str) {
+//                return str.isEmpty();
+//            }
+//        };
+        Predicate<String> predicate = (str)->{ return str.isEmpty(); };
+        System.out.println(predicate.test("we"));
+    }
+}
+~~~
+
+
+
+>   Consumer 消费型接口
+
+![image-20210216121454703](E:\dev\picture\image-20210216121454703.png)
+
+~~~java
+/**
+ * Consumer 有入参，无返回值
+ */
+public class Demo03 {
+    public static void main(String[] args) {
+//        Consumer<String> consumer = new Consumer<String>(){
+//            @Override
+//            public void accept(String str) {
+//                System.out.println(str);
+//            }
+//        };
+        Consumer<String> consumer = (str)->{ System.out.println(str); };
+        consumer.accept("adfsdf");
+    }
+}
+~~~
+
+
+
+>   Supplier 供给型接口  没有参数，只有返回值
+
+![image-20210216121941119](E:\dev\picture\image-20210216121941119.png).
+
+~~~java
+import java.util.function.Supplier;
+
+/**
+ * Supplier 供给型接口 没有参数，只有返回值
+ */
+public class Demo04 {
+    public static void main(String[] args) {
+//        Supplier<Integer> supplier = new Supplier<Integer>(){
+//
+//            @Override
+//            public Integer get() {
+//                System.out.println("get'''");
+//                return 1024;
+//            }
+//        };
+        Supplier<Integer> supplier = ()->{ System.out.println("get");return 1024;};
+        System.out.println(supplier.get());
+    }
+}
+~~~
+
