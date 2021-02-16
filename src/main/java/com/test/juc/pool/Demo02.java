@@ -3,11 +3,16 @@ package com.test.juc.pool;
 import java.util.concurrent.*;
 
 /**
- * Executors工具类，三大方法
+ * Executors工具类，七大参数、四种拒绝策略
  */
 public class Demo02 {
     public static void main(String[] args) {
-         ExecutorService threadPool = new ThreadPoolExecutor(2,
+        //最大线程如何定义？
+        //1、cpu密集型  几核cpu就定义为几。保持cpu效率最高
+        //2、io密集型  判断程序中消耗io资源高的线程数，一般设置为其两倍
+        System.out.println("cpu核数"+Runtime.getRuntime().availableProcessors());//获取运行是cpu的核数
+
+        ExecutorService threadPool = new ThreadPoolExecutor(2,
                  5,
                  3,
                  TimeUnit.SECONDS,

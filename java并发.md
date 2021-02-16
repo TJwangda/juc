@@ -1308,3 +1308,19 @@ public class Demo02 {
 //new ThreadPoolExecutor.DiscardPolicy());//最大容量满了以后再进来的任务会丢掉不处理，不抛出异常
 //new ThreadPoolExecutor.DiscardOldestPolicy());//最大容量满了尝试和最早的竞争，如果最早线程任务处理结束了，可以执行，否则依然丢掉不报异常
 ```
+
+> 小结
+
+```java
+最大线程如何定义？用于调优
+1、cpu密集型  几核cpu就定义为几。保持cpu效率最高
+2、io密集型  判断程序中消耗io资源高的线程数，一般设置为其两倍
+    
+    ExecutorService threadPool = new ThreadPoolExecutor(2,
+                 Runtime.getRuntime().availableProcessors(),//cpu密集型获取运行时cpu的核数
+                 3,
+                 TimeUnit.SECONDS,
+                 new LinkedBlockingQueue<>(3),//阻塞队列超过三个时，触发最大容量
+                 Executors.defaultThreadFactory(),
+                 new ThreadPoolExecutor.AbortPolicy());//默认拒绝策略。  最大容量满了以后再进来的任务不处理并报异常             
+```
