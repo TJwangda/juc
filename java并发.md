@@ -2060,3 +2060,49 @@ class Test{
 枚举构造函数
 
 ![image-20210219161706043](E:\dev\picture\image-20210219161706043.png).
+
+
+
+## 深入立即CAS
+
+> 什么是CAS
+
+~~~java
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class CasDemo {
+
+    public static void main(String[] args) {
+        AtomicInteger atomicInteger = new AtomicInteger(2020);
+
+        //（期望、修改）
+        //public final boolean compareAndSet(int expect, int update
+        //如果期望的值对了，就更新，否则不更新  CAS是cpu的并发原语
+        System.out.println(atomicInteger.compareAndSet(2020, 2021));
+        System.out.println(atomicInteger.get());
+        atomicInteger.getAndIncrement();
+        System.out.println(atomicInteger.compareAndSet(2020, 2022));
+        System.out.println(atomicInteger);
+    }
+}
+~~~
+
+
+
+> unsafe
+
+![image-20210219164704528](E:\dev\picture\image-20210219164704528.png)
+
+![image-20210219165057045](E:\dev\picture\image-20210219165057045.png)
+
+![image-20210219171600371](E:\dev\picture\image-20210219171600371.png)
+
+CAS：比较当前工作内存中的值，如果是期望的，则执行操作；否则一直循环。
+
+缺点：
+
+1. 循环耗时
+2. 一次性只能保证一个共享变量的原子性
+3. 会存在ABA问题。
+
+> CAS   ABA问题
