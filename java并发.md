@@ -1662,3 +1662,191 @@ public class Demo01 {
 }
 ~~~
 
+
+
+## JMM
+
+> 谈谈对Volatile的理解
+
+Volatile是java提供的**轻量级的同步机制**。
+
+1. 保证可见性
+2. ==不保证原子性==
+3. 禁止指令重排
+
+
+
+> 什么是JMM
+
+jvm：java虚拟机
+
+JMM：java内存模型，不存在，是一种约定。
+
+
+
+**关于JMM同步的一些约定**
+
+1. 线程解锁前，必须把共享变量==立刻刷回主存==
+2. 线程加锁前，必须读取主存中的最新值到工作内存中，不能直接操作主存。
+3. 加锁和解锁是同一把锁
+
+
+
+线程  工作内存  主内存
+
+**八种操作**
+
+![image-20210219113827406](E:\dev\picture\image-20210219113827406.png).
+
+![image-20210219125503236](E:\dev\picture\image-20210219125503236.png)
+
+**主内存与工作内存八种操作指令**：
+
+- lock（锁定）：作用于主内存的变量，它把一个变量标识为一条线程独占的状态；
+- unlock（解锁）：作用于主内存的变量，它把一个处于锁定状态的变量释放出来，释放后的变量才可以被其他线程锁定；
+- read（读取）：作用于主内存的变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的load动作使用；
+- load（载入）：作用于工作内存的变量，它把read操作从主内存中得到的变量值放入工作内存的变量副本中；
+- use（使用）：作用于工作内存的变量，它把工作内存中一个变量的值传递给执行引擎，每当虚拟机遇到一个需要使用变量的值的字节码指令时将会执行这个操作；
+- assign（赋值）：作用于工作内存的变量，它把一个从执行引擎接收的值赋给工作内存的变量，每当虚拟机遇到一个给变量赋值的字节码指令时执行这个操作；
+- store（存储）：作用于工作内存的变量，它把工作内存中一个变量的值传送到主内存中，以便随后的write操作使用；
+- write（写入）：作用于主内存的变量，它把store操作从工作内存中得到的变量的值放入主内存的变量中；
+
+如果要把一个变量从主内存拷贝到工作内存，那就要按顺序执行read和load操作，如果要把变量从工作内存同步回主内存，就要按顺序执行store和write操作。注意Java内存模型只要求上述两个操作必须按顺序执行，但不要求是连续执行。也就是说read与load之间、store与write之间是可插入其他指令的，如对主内存中的变量a、b进行访问时，一种可能出现的顺序是read a、read b、load b、load a。除此之外，Java内存模型还规定了在执行
+
+**上述8种基本操作时必须满足如下规则**：
+
+- 不允许read和load、store和write操作之一单独出现，即不允许一个变量从主内存读取了但工作内存不接受，或者工作内存发起回写了但主内存不接受的情况出现；
+- 不允许一个线程丢弃它最近的assign操作，即变量在工作内存中改变了之后必须把该变化同步回主内存；
+- 不允许一个线程无原因地（没有发生过任何assign操作）把数据从线程的工作内存同步回主内存中；
+- 一个新的变量只能在主内存中“诞生”，不允许在工作内存中直接使用一个未被初始化（load或 assign）的变量，换句话说就是对一个变量实施use、store操作之前，必须先执行assign和load操作；
+- 一个变量在同一个时刻只允许一条线程对其进行lock操作，但lock操作可以被同一条线程重复执 行多次，多次执行lock后，只有执行相同次数的unlock操作，变量才会被解锁；
+- 如果对一个变量执行lock操作，那将会清空工作内存中此变量的值，在执行引擎使用这个变量前，需要重新执行load或assign操作以初始化变量的值；
+- 如果一个变量事先没有被lock操作锁定，那就不允许对它执行unlock操作，也不允许去unlock一个被其他线程锁定的变量；
+- 对一个变量执行unlock操作之前，必须先把此变量同步回主内存中（执行store、write操作）；
+
+
+
+问题：程序不知道主内存中的值已经被修改![image-20210219130915689](E:\dev\picture\image-20210219130915689.png)
+
+~~~java
+public class JMMDemo {
+    public static int num = 0;
+    public static void main(String[] args) throws InterruptedException {//main线程
+
+        new Thread(()->{//线程1，一直执行
+            while (num == 0){
+            }
+        }).start();
+
+        TimeUnit.SECONDS.sleep(1);//主线程睡眠一秒，线程1可以启动完成
+
+        num = 1;
+        System.out.println("num:"+num);
+    }
+}
+
+~~~
+
+
+
+## Volatile
+
+> 1、保证可见性
+
+~~~java
+public class JMMDemo {
+//    public static int num = 0;
+    public volatile static int num = 0;
+    public static void main(String[] args) throws InterruptedException {//main线程
+
+        new Thread(()->{//线程1,不加volatile无法感知主内存的变化，会死循环；加了volatile保证可见性
+            while (num == 0){
+            }
+        }).start();
+
+        TimeUnit.SECONDS.sleep(1);//主线程睡眠一秒，线程1可以启动完成
+
+        num = 1;
+        System.out.println("num:"+num);
+    }
+}
+~~~
+
+
+
+> 不保证原子性
+
+原子性：不可分割
+
+~~~java
+/**
+ * 不保证原子性
+ */
+public class JMMDemo2 {
+//    public static int num = 0;
+    public volatile static int num = 0;
+
+    public static void add(){
+        num++;
+    }
+    public static void main(String[] args) throws InterruptedException {//main线程
+        //正常结果为20000
+        for (int i = 1; i <= 20; i++) {
+            new Thread(()->{
+                for (int j = 0; j < 1000; j++) {
+                    add();
+                }
+            }).start();
+        }
+
+        while (Thread.activeCount()>2){//main、gc
+            Thread.yield();//线程礼让
+        }
+
+        System.out.println(Thread.currentThread().getName()+""+num);
+    }
+}
+~~~
+
+如果不加lock和synchronized，怎么保证原子性
+
+![image-20210219132815963](E:\dev\picture\image-20210219132815963.png)
+
+**使用原子类**
+
+![image-20210219133248334](E:\dev\picture\image-20210219133248334.png).
+
+~~~java
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * 不保证原子性
+ */
+public class JMMDemo2 {
+//    public volatile static int num = 0;
+    //原子类
+    public volatile static AtomicInteger num = new AtomicInteger();
+    public static void add(){
+//        num++;//不是原子性操作
+        num.getAndIncrement();//AtomicInteger+1方法，底层CAS实现
+    }
+    public static void main(String[] args) throws InterruptedException {//main线程
+        //正常结果为20000
+        for (int i = 1; i <= 20; i++) {
+            new Thread(()->{
+                for (int j = 0; j < 1000; j++) {
+                    add();
+                }
+            }).start();
+        }
+
+        while (Thread.activeCount()>2){//程序运行最少需要main、gc
+            Thread.yield();//线程礼让
+        }
+
+        System.out.println(Thread.currentThread().getName()+"："+num);
+    }
+}
+~~~
+
+原子类底层直接与操作系统挂钩；直接在内存中修改值；unsafe类
