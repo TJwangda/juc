@@ -2063,7 +2063,7 @@ class Test{
 
 
 
-## 深入立即CAS
+## 深入理解CAS
 
 > 什么是CAS
 
@@ -2105,4 +2105,102 @@ CAS：比较当前工作内存中的值，如果是期望的，则执行操作�
 2. 一次性只能保证一个共享变量的原子性
 3. 会存在ABA问题。
 
-> CAS   ABA问题
+
+
+> CAS   ABA问题（狸猫换太子）
+
+![image-20210219172142806](E:\dev\picture\image-20210219172142806.png)
+
+~~~java
+/**
+ * ABA问题，一个线程把值改变了又改回去了，第二个线程不知道。
+ */
+public class CasDemo2 {
+
+    public static void main(String[] args) {
+        AtomicInteger atomicInteger = new AtomicInteger(2020);
+
+        //（期望、修改）
+        //public final boolean compareAndSet(int expect, int update
+        //如果期望的值对了，就更新，否则不更新  CAS是cpu的并发原语
+//        捣乱的线程
+        System.out.println(atomicInteger.compareAndSet(2020, 2021));
+        System.out.println(atomicInteger.get());
+
+        System.out.println(atomicInteger.compareAndSet(2021, 2020));
+        System.out.println(atomicInteger.get());
+//        期望的线程
+        System.out.println(atomicInteger.compareAndSet(2020, 6699));
+        System.out.println(atomicInteger);
+    }
+}
+~~~
+
+
+
+## 原子引用
+
+> 解决ABA问题，引入原子引用。对应的思想：乐观锁
+
+带版本号的原子操作
+
+~~~java
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicStampedReference;
+
+/**
+ * 原子引用解决ABA问题
+ */
+public class CasDemo3 {
+
+    public static void main(String[] args) {
+//        AtomicInteger atomicInteger = new AtomicInteger(2020);
+        //注意AtomicStampedReference泛型如果是包装类，要注意引用问题，是否是同一个对象。
+        AtomicStampedReference<Integer> atomicStampedReference = new AtomicStampedReference<>(1,1);
+
+       new Thread(()->{
+           int stamp = atomicStampedReference.getStamp();
+           System.out.println("a1++++=="+stamp);
+
+           try {
+               TimeUnit.SECONDS.sleep(1);
+           } catch (InterruptedException e) {
+               e.printStackTrace();
+           }
+
+           System.out.println(atomicStampedReference.compareAndSet(1, 2, atomicStampedReference.getStamp(), atomicStampedReference.getStamp() + 1));
+
+           System.out.println("a2=>"+atomicStampedReference.getStamp());
+//           System.out.println("a2=>"+stamp  );
+
+           System.out.println(atomicStampedReference.compareAndSet(2, 1, atomicStampedReference.getStamp(), atomicStampedReference.getStamp() + 1));
+
+           System.out.println("a3=>"+atomicStampedReference.getStamp());
+       },"a").start();
+
+        new Thread(()->{
+            int stamp = atomicStampedReference.getStamp();
+            System.out.println("b1++++=="+stamp);
+
+            try {
+                TimeUnit.SECONDS.sleep(2);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            System.out.println(atomicStampedReference.compareAndSet(1, 6, stamp, stamp + 1));
+            System.out.println("b2=>"+atomicStampedReference.getStamp());
+        },"b").start();
+    }
+}
+
+~~~
+
+
+
+**注意**
+
+**Integer使用了对象缓存机制，默认范围是-128~127，推荐使用静态工厂方法valueOf获取对象实例，而不是new，因为valueOf使用缓存，而new一定会创建新的对象分配新的内存空间**
+
+![image-20210220103243051](E:\dev\picture\image-20210220103243051.png)
