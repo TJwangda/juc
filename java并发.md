@@ -2321,6 +2321,84 @@ public class Demo02 {
 
 ### 自旋锁
 
+spinlock
+
+![image-20210220112130401](E:\dev\picture\image-20210220112130401.png)
+
+> 定义一个自旋锁
+
+~~~java
+import java.util.concurrent.atomic.AtomicReference;
+
+/**
+ * 自旋锁
+ */
+public class SpinLockDeom {
+    AtomicReference<Thread> atomicReference = new AtomicReference<>();
+
+    //加锁
+    public void  myLock(){
+        Thread thread = Thread.currentThread();
+        System.out.println(Thread.currentThread().getName()+"==mylock");
+
+        //自旋锁
+        while (!atomicReference.compareAndSet(null,thread)){
+
+        };
+    }
+
+    //解锁
+    public void  myUnLock(){
+        Thread thread = Thread.currentThread();
+        System.out.println(Thread.currentThread().getName()+"==myUnlock");
+
+        atomicReference.compareAndSet(thread,null);
+    }
+}
+~~~
+
+
+
+> 测试自定义的锁
+
+~~~java
+import java.util.concurrent.TimeUnit;
+
+public class TestSpinLock {
+    public static void main(String[] args) throws InterruptedException {
+
+        //底层 自旋锁CAS
+        SpinLockDeom spinLockDeom = new SpinLockDeom();
+
+        new Thread(()->{
+            spinLockDeom.myLock();
+            try {
+                TimeUnit.SECONDS.sleep(3);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                spinLockDeom.myUnLock();
+            }
+        },"t1").start();
+
+        TimeUnit.SECONDS.sleep(1);
+
+        new Thread(()->{
+            spinLockDeom.myLock();
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                spinLockDeom.myUnLock();
+            }
+        },"t2").start();
+    }
+}
+~~~
+
+![image-20210220142203856](E:\dev\picture\image-20210220142203856.png).
+
 
 
 ### 死锁
