@@ -2204,3 +2204,124 @@ public class CasDemo3 {
 **Integer使用了对象缓存机制，默认范围是-128~127，推荐使用静态工厂方法valueOf获取对象实例，而不是new，因为valueOf使用缓存，而new一定会创建新的对象分配新的内存空间**
 
 ![image-20210220103243051](E:\dev\picture\image-20210220103243051.png)
+
+
+
+## 各种锁的理解
+
+### 公平锁、非公平锁
+
+公平锁：非常公平，不能插队。线程需要先来后到。
+
+非公平锁：可以插队。（默认都是非公平锁）
+
+~~~java
+public ReentrantLock() {
+    sync = new NonfairSync();
+}
+//重载方法
+public ReentrantLock(boolean fair) {
+    sync = fair ? new FairSync() : new NonfairSync();
+}
+~~~
+
+
+
+### 可重入锁（递归锁）
+
+![image-20210220110312437](E:\dev\picture\image-20210220110312437.png)
+
+> synchronized
+
+~~~java
+/**
+ * 可重入锁
+ * synchronized
+ */
+public class Demo01 {
+    public static void main(String[] args) {
+        Phone phone = new Phone();
+        new Thread(()->{
+            phone.sms();
+        },"a").start();
+
+        new Thread(()->{
+            phone.sms();
+        },"b").start();
+    }
+}
+
+class Phone{
+    public synchronized void sms(){
+        System.out.println(Thread.currentThread().getName()+":sms");
+        call();//这里也有锁
+    }
+
+    public synchronized void call(){
+        System.out.println(Thread.currentThread().getName()+":call");
+    }
+}
+
+~~~
+
+> Lock版
+
+~~~java
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class Demo02 {
+    /**
+     * 可重入锁
+     * lock锁
+     */
+     public static void main(String[] args) {
+            Phone2 phone = new Phone2();
+            new Thread(()->{
+                phone.sms();
+            },"a").start();
+
+            new Thread(()->{
+                phone.sms();
+            },"b").start();
+        }
+    }
+
+    class Phone2{
+
+        Lock lock = new ReentrantLock();//创建锁
+        public  void sms(){
+            lock.lock();//上锁
+            try {
+                System.out.println(Thread.currentThread().getName()+":sms");
+                call();//这里也有锁
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                lock.unlock();//最后释放
+            }
+
+        }
+
+        public  void call(){
+            lock.lock();//上锁
+            try {
+                System.out.println(Thread.currentThread().getName()+":call");
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                lock.unlock();//最后释放
+            }
+
+        }
+    }
+~~~
+
+
+
+### 自旋锁
+
+
+
+### 死锁
+
